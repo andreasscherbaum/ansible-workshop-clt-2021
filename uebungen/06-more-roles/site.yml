@@ -1,0 +1,14 @@
+---
+
+- name: Regeln auf allen Webserver Maschinen durchsetzen
+  hosts: webservers
+  become: true
+  roles:
+    - apache
+
+
+- name: Regeln auf allen Datenbank Maschinen durchsetzen
+  hosts: dbservers
+  become: true
+  roles:
+    - postgresql

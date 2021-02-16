@@ -1,0 +1,23 @@
+---
+
+# do not change the entries while operating this lab
+# the keys and instances depend on the order of lines in this file
+
+attendees:
+
+  - { id: "00", name: "ads-01@wars-nicht.de", size: "t2.micro", region: "eu-central-1" }
+  - { id: "01", name: "ads-02@wars-nicht.de", size: "t2.micro", region: "eu-central-1" }
+
+
+
+# Note: also add the regions to 'regions' in configuration.yml
+
+# eu-central-1 - EU (Frankfurt)
+# eu-west-1 - EU (Ireland)
+# eu-west-2 - EU (London)
+# eu-west-3 - EU (Paris)
+# eu-north-1 - EU (Stockholm)
+# us-east-1 - US East (N. Virginia)
+# us-east-2 - US East (Ohio)
+# us-west-1 - US West (N. California)
+# us-west-2 - US West (Oregon)

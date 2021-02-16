@@ -1,0 +1,35 @@
+---
+
+- name: shutdown CLT lab environment
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+
+
+  tasks:
+
+  # the EC2 module does not play well with a proxy
+  - name: verify that proxy is not set
+    fail:
+      msg: "$http_proxy is set!"
+    when: lookup('env','http_proxy')|default('') != ""
+
+  - name: include configuration
+    include_vars:
+      file: configuration.yml
+
+  - name: include aws credentials
+    include_vars:
+      file: awscreds.yml
+
+
+  # it's complicated to loop over nested variables in Ansible
+  # mainly because "block" does not support loops
+  # the workaround is to include the functionality from a file
+  - name: Shutdown instances in a region
+    include: "shutdown-per-region.yml"
+    loop: "{{ regions }}"
+    loop_control:
+      loop_var: _region
+      label: "{{ _region }}"

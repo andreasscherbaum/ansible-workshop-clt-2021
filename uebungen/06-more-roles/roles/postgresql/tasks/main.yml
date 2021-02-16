@@ -1,0 +1,43 @@
+---
+
+
+- name: Add apt-key for PostgreSQL repository
+  apt_key:
+    url: "{{ postgresql_repository_key }}"
+    state: present
+
+
+- name: Read lsb_release version
+  shell: lsb_release -sc
+  register: lsb_release
+  changed_when: false
+
+
+- name: PostgreSQL APT repository
+  apt_repository:
+    repo: "deb {{ postgresql_repository_apt }} {{ lsb_release.stdout }}-pgdg main"
+    state: present
+    update_cache: yes
+    # the "filename" requires Ansible 2.1 or later
+    filename: postgresql-repository
+
+
+- name: Update apt cache
+  apt: update_cache=yes
+
+
+- name: Install PostgreSQL packages
+  package:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - "postgresql-{{ postgresql_version }}"
+    - "postgresql-client-{{ postgresql_version }}"
+    - "postgresql-contrib-{{ postgresql_version }}"
+    - python-psycopg2
+
+
+- name: Ensure PostgreSQL is running
+  service:
+    name: postgresql
+    state: started

@@ -1,0 +1,8 @@
+---
+
+- name: Regeln auf allen Maschinen durchsetzen
+  hosts: all
+  become: true
+  roles:
+    - hostname
+    - ntp

@@ -1,0 +1,9 @@
+[all]
+host1 ansible_host={{ item.tagged_instances[0].public_ip }}
+host2 ansible_host={{ item.tagged_instances[1].public_ip }}
+
+[dbservers]
+host1 ansible_host={{ item.tagged_instances[0].public_ip }}
+
+[webservers]
+host2 ansible_host={{ item.tagged_instances[1].public_ip }}

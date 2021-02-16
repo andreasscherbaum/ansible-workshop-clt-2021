@@ -1,0 +1,22 @@
+
+Hallo,
+
+mit dieser E-Mail erhältst Du die notwendigen Zugangsdaten und Konfigurationsdateien für den Workshop "Server mit Ansible verwalten" beim CLT 2021!
+
+Wenn nicht bereits getan, checke bitte das git-Repository für den Workshop aus:
+  - git clone https://github.com/andreasscherbaum/ansible-workshop-clt-2021
+
+Ansonsten wechselst Du bitte einfach nur in das ausgecheckte Repository und aktualisierst es noch einmal:
+  - cd ansible-workshop-clt-2021
+  - git pull
+
+Für den reibungslosen Start in den Workshop führe nun bitte noch im ausgecheckten Repository (ansible-workshop-clt-2021) folgende Schritte aus:
+
+  - Speichere die fünf Dateien im Anhang dieser Mail im Verzeichnis "ansible-workshop-clt-2021"
+  - chmod 0600 key.pem
+  - chmod 0700 connect-db.sh connect-web.sh
+  - export ANSIBLE_CONFIG=$(pwd)
+
+Dann müsste alles startklar sein und ein 'ansible -m ping all' sollte fröhliche 'pong' zurückgeben.
+
+Viel Spaß beim Workshop wünschen Dir Jens & Andreas!

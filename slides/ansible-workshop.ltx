@@ -1,0 +1,776 @@
+\documentclass[ngerman]{beamer}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{microtype}
+\usepackage{csquotes}
+\usepackage[type1,ttscale=.875]{libertine}
+\usepackage{inconsolata}
+\usepackage{fixltx2e}
+\usepackage{listings}
+\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true}
+\usepackage{tikz}
+\usepackage[normalem]{ulem}
+\usetikzlibrary{trees}
+
+
+\usetheme{JuanLesPins}
+\usecolortheme{beaver}
+\usefonttheme{professionalfonts}
+
+\begin{document}
+\title{Server mit Ansible verwalten}
+\author{Jens Kubieziel, Andreas Scherbaum}
+\date{14.\,März~2021}
+
+\begin{frame}
+  \maketitle{}
+\end{frame}
+
+
+
+
+\begin{frame}[plain,noframenumbering]
+  \frametitle{Agenda}
+  \tableofcontents
+\end{frame}
+
+
+\section{Einleitung}
+
+\begin{frame}
+  \frametitle{Organisatorisches}
+\begin{itemize}
+\item Geplante Dauer: 3~Stunden
+\item Nach einer kurzen Einführung gibt es Übungen.
+\item Wir stellen euch AWS-Instanzen zur Verfügung.
+\end{itemize}
+\pause{}
+
+Ziel: Betrieb einer kleinen PHP"=Anwendung mit  Web- und Datenbankserver
+verwaltet über Ansible
+\end{frame}
+
+\begin{frame}
+  \frametitle{Wir}
+  \framesubtitle{Kurze Vorstellung}
+  \begin{itemize}
+  \item Jens Kubieziel
+  \item Andreas Ufert
+  \item Andreas Scherbaum
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Wir}
+  \framesubtitle{Kurze Vorstellung - Jens Kubieziel}
+  \begin{itemize}
+  \item <Insert Description Here>
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Wir}
+  \framesubtitle{Kurze Vorstellung - Andreas Scherbaum}
+  \begin{itemize}
+  \item Arbeitet für Adjust GmbH
+  \item Arbeitet mit vielen PostgreSQL Datenbanken
+  \item Board of Directors: PostgreSQL Europe
+  \item Organisiert eine Reihe Konferenzen: pgconf.de, pgconf.eu, FOSDEM PGDay
+  \item Blog: https://andreas.scherbaum.la/
+  \end{itemize}
+\end{frame}
+
+
+\AtBeginSection{
+    \begin{frame}[plain,noframenumbering]
+        \frametitle{Agenda}
+        \tableofcontents[currentsection]
+    \end{frame}
+}
+
+
+\section{Einführung in Ansible}
+
+\begin{frame}
+  \frametitle{Was ist Ansible?}
+  \begin{enumerate}
+  \item<+-> Ein Kommunikationsgerät, mit dem ihr mit Überlichtgeschwindigkeit
+    kommunizieren könnt (\textsc{Ursula K.\,Le Guin})
+  \item<+-> Eine Software, die bei der Verwaltung und der Konfiguration von
+    Servern hilft.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Warum Ansible?}
+  \begin{columns}
+    \begin{column}{.5\textwidth}
+      \includegraphics[width=\textwidth]{clt17-ansible}
+    \end{column}
+    \begin{column}{.5\textwidth}  
+      \includegraphics[width=\textwidth]{clt17-ansible2}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Warum Ansible?}
+  \centering
+  \includegraphics[width=\textwidth]{Ansible-2019-02-27}
+  \begin{tiny}
+    Quelle: https://www.techrepublic.com/article/ansible-overtakes-chef-and-puppet-as-the-top-cloud-configuration-management-tool/
+  \end{tiny}
+\end{frame}
+
+
+
+\begin{frame}
+  \frametitle{Was ist Ansible?}
+  \framesubtitle{Details}
+  \begin{itemize}
+  \item<+-> leichtgewichtiges Werkzeug zur Automatisierung von Administrationsaufgaben
+  \item<+-> Freie Software
+  \item<+-> in Python entwickelt
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Wie funktioniert Ansible?}
+  Ihr beschreibt den gewünschten Zustand der Zielsysteme. Ansible loggt sich per
+  SSH ein und führt ggf. notwendige Aktionen aus.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Wie funktioniert Ansible?}
+  \framesubtitle{Voraussetzungen}
+  \begin{itemize}
+  \item SSH
+  \item Python (Version 2.6 bzw. Python~3)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Wie installiere ich Ansible?}
+  \begin{itemize}
+  \item<+-> Über die Paketverwaltung deines GNU/Linux"=Systems:
+    \begin{itemize}
+    \item \texttt{apt install ansible}
+    \item Unter Ubuntu gibt es ein PPA: \texttt{apt-add-repository
+        ppa:ansible/ansible}
+    \item \texttt{yum install ansible} (ggf. das EPEL"=Repository aktivieren)
+    \item \texttt{emerge -av app-admin/ansible}
+    \end{itemize}
+  \item<+-> Aus den Quellen:
+    \begin{itemize}
+      
+    \item \texttt{pip install ansible}
+    \item \texttt{tar.gz} von \url{https://github.com/ansible/ansible/releases}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\section{Erste Schritte mit Ansible}
+
+\subsection{Erreichbarkeit der Maschinen}
+
+\begin{frame}[fragile]
+  \frametitle{Übung 1}
+  Bevor wir mit Ansible loslegen, wollen wir wissen, ob ihr euch auf den
+  Maschinen einloggen könnt.
+
+  \begin{exampleblock}{}
+    Führt die Übung~1 im Verzeichnis \texttt{uebungen/01-ssh} aus.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Übung 2}
+  Mit dem ersten Ansible"=Kommando wollen wir die Maschinen anpingen. Woher weiß
+  Ansible, mit welchen Maschinen es reden soll?
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Inventory}
+  Das Inventory sammelt die diversen Systeme und besteht aus einer oder mehreren
+  Dateien:
+  \begin{exampleblock}{hosts}
+    \texttt{192.168.23.42}\\
+    \texttt{clt.20.example.org}
+
+    \texttt{[web]}\\
+    \texttt{192.168.17.189}\\
+    \texttt{clt.20.example.org}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile,t]
+  \frametitle{Inventory}
+  \framesubtitle{Format}
+  Das Inventory kann im INI"=Format vorliegen \only<3>{oder als YAML"=Datei:}
+  \only<2>{  \begin{exampleblock}{hosts als INI}
+    \texttt{192.168.23.42}\\
+    \texttt{clt.20.example.org}
+
+    \texttt{[web]}\\
+    \texttt{192.168.17.189}\\
+    \texttt{clt.20.example.org}
+  \end{exampleblock}}
+
+\begin{onlyenv}<3>
+  \begin{exampleblock}{hosts als YAML}
+\begin{lstlisting}
+all:
+  hosts:
+    192.168.23.42
+    clt.20.example.org
+  children:
+    web:
+      clt.20.example.org:
+\end{lstlisting}
+  \end{exampleblock}
+\end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Ad-Hoc-Modus}
+  Mit dem Aufruf von Ansible auf der Kommandozeile lassen sich verschiedene
+  Befehle mitgeben. Diese landen eventuell in der Shellhistory, sind aber
+  ansonsten nirgendwo hinterlegt. Diese Art von Aufruf wird als
+  \emph{Ad-Hoc-Modus} bezeichnet.
+  \pause{}
+  
+  Der Aufruf enthält die betreffenden Hosts sowie Optionen:
+  \begin{description}
+  \item[\texttt{-i}] bezeichnet den Ort des Inventorys
+  \item[\texttt{-m}] Modul, welches ausgeführt werden soll (z. B. shell)
+  \item[\texttt{-a}] Argumente zum obigen Modul bzw. Shell"=Kommando (\texttt{command}"=Modul)
+  \item[\texttt{-u}] Benutzername (Standard: aktueller Benutzername)
+  \item[\texttt{-b}] Aktionen werden mit den Rechten des angegebenen Benutzers ausgeführt
+  \end{description}
+  \pause{}
+  
+  \begin{exampleblock}{Hello World}
+    \texttt{ansible all -i hosts -a '/bin/echo Hello World'}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Übung 2}
+  Für Ansible gibt es das Modul ping, welches einen oder mehrere Hosts
+  kontaktiert und das Ergebnis zurückmeldet.
+  
+  \begin{exampleblock}{}
+    Führt die Übung~2 im Verzeichnis \texttt{uebungen/02-ping} aus.
+  \end{exampleblock}
+\end{frame}
+
+\subsection{Ad-Hoc-Befehle}
+
+\begin{frame}
+  \frametitle{Module}
+  Module abstrahieren Konfigurations- bzw. Sysadmin"=Aufgaben. Diese erledigen die
+  eigentliche Arbeit. Eine Liste aller verfügbaren Module ist auf
+  \url{http://docs.ansible.com/ansible/latest/modules_by_category.html}.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Module}
+  \framesubtitle{Idempotenz}
+  Ein wichtiges Konzept von Ansible, wie auch ähnlichen Managementprogrammen,
+  ist die \emph{Idempotenz}. Das heißt, ein mehrfacher Aufruf hat denselben
+  Effekt wie die einmalige Ausführung.
+
+  Module sollten die Idempotenz garantieren, d.\,h. wenn diese feststellen, dass
+  der gewünschte Stand erreicht ist, nehmen diese keine Änderung am System vor.
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Module}
+  \framesubtitle{Dokumentation}
+  Die Dokumentation der Module kann über die Kommandozeile mittels
+  \texttt{ansible-doc modulname} oder über die Webseite aufgerufen werden.
+
+  \begin{exampleblock}{Shellmodul}
+    \texttt{ansible-doc shell} oder \url{http://docs.ansible.com/ansible/latest/shell_module.html}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Übung 3}
+  Führt weitere Ad-Hoc-Befehle aus, siehe \texttt{uebungen/03-addoc}.
+\end{frame}
+
+\section{Playbooks}
+
+\subsection{Einführung zu Playbooks}
+
+\begin{frame}
+  \frametitle{Playbooks}
+  Playbooks sind das zentrale Werkzeug von Ansible. Darüber wird 
+  Konfiguration, Deployment und Orchestration gesteuert.
+
+  Ein Playbook besteht aus einem oder mehreren kleinen Anleitungen, die angeben,
+  welcher Zustand auf welchen Zielrechnern erwünscht ist.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Playbooks}
+  \framesubtitle{Begriffe}
+  \begin{description}
+  \item[Task] ist der Aufruf eines Moduls mit diversen Parametern.
+  \item[Play] ist die Abfolge mehrerer Tasks auf Rechnern aus dem Inventory.
+  \item[Playbook] ist eine Zusammenstellung eines oder mehrerer Plays.
+  \end{description}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Playbooks}
+  \framesubtitle{Aufruf}
+  Die Playbooks werden über einen speziellen Befehl aufgerufen:
+  \begin{exampleblock}{Aufruf der Playbooks}
+    \texttt{ansible-playbook foo.yml}
+  \end{exampleblock}\pause{}
+
+  Was passiert, wenn ein Playbook mehrfach nacheinander aufgerufen wird?
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{YAML}
+  Ansible nutzt die Beschreibungssprache YAML für Playbooks. Im
+  folgenden findet ihr einen kurzen Überblick über die Syntax.
+  \pause{}
+  
+  Der Start eines Dokuments kann durch drei Striche (\texttt{---}) und das Ende
+  durch drei Punkte (\texttt{...}) markiert werden.
+  \begin{exampleblock}{Das übliche Hallo-Welt-Beispiel}
+    \texttt{---}\\
+    \texttt{Hallo: Welt}\\
+    \texttt{...}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{YAML}
+  \framesubtitle{Syntax}
+  \begin{itemize}
+  \item<1-> Listen starten mit einem Anstrich (\texttt{-}) und Leerraum.
+    \begin{exampleblock}{}
+      \texttt{- Hallo}\\
+      \texttt{- Welt}
+    \end{exampleblock}
+  \item<2-> Dictionarys bestehen aus Schlüsselwert, \texttt{:}, Leerzeichen und
+    Wert.
+    \begin{exampleblock}{}
+      \texttt{Hallo: Welt}\\
+      \texttt{Linux: Debian}
+    \end{exampleblock}
+  \end{itemize}
+  \pause{}
+  Beides lässt sich kombinieren und verschachteln.
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{YAML}
+  \framesubtitle{Beispiel}
+  Stellt euch vor, ihr wollt sicherstellen, dass auf einem neuen Host ein
+  bestimmter Nutzer angelegt ist, dieser eure Lieblingsshell als Login"=Shell
+  hat und diese natürlich installiert ist. Welche Schritte würdet ihr machen, um
+  dies zu realisieren?\pause{}
+  \begin{exampleblock}{Nutzer anlegen}
+\begin{lstlisting}
+- hosts: all
+  tasks:
+  - name: Shell installieren
+    apt: name=fish
+  - name: Nutzer anlegen
+    user: name=clt20 state=present shell=/usr/bin/fish
+\end{lstlisting}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{YAML}
+  \framesubtitle{Variablen}
+  Später benötigen wir Variablen:
+  \begin{exampleblock}{}
+    \texttt{name: "\{\{ Variable \}\}"}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{YAML}
+  \framesubtitle{Variablen}
+  \begin{alertblock}{}
+    Nicht gesetzte Variablen führen zum Abbruch des Playbooks.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Übung 4}
+  Entwerft nun ein Playbook, welches den Hostnamen setzt, einen NTP"=Server
+  installiert und sicherstellt, dass der Daemon auch läuft.\pause{}
+  \begin{alertblock}{Vorüberlegungen}
+    \begin{itemize}
+    \item<+-> Auf welchen Hosts soll die Aufgabe ausgeführt werden
+      (\texttt{hosts})?
+    \item<+-> Mit welchen Rechten wird die Aufgabe auf den Hosts aufgeführt
+      (\texttt{become}, \texttt{become\_user} etc.)?
+    \item<+-> In welchen Schritten kann die Aufgabe ausgeführt werden?
+    \item<+-> Welche Module werden benötigt? Welche Parameter sind sinnvoll?
+    \end{itemize}
+  \end{alertblock}
+\end{frame}
+
+\subsection{Rollen}
+
+\begin{frame}[fragile]
+  \frametitle{Rollen}
+  \framesubtitle{Einführung}
+  Mit den Methoden können wir nun ein großes Playbook schreiben. Aber irgendwann
+  kommt der Punkt, wo die Arbeit besser organisiert werden soll. Denn in der
+  Regel sollen viele kleine Aufgaben ausgeführt werden statt einer großen.
+
+  Seit Ansible~2.4 gibt es die Möglichkeit, Inhalte anderer Dateien einzubinden
+  (\texttt{import} und \texttt{include}).
+
+  Rollen sind ein älteres Mittel. Diese greifen auf eine vordefinierte
+  Verzeichnisstruktur zurück und können Tasks ausführen, auf Variablen zugreifen etc.
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Rollen}
+  \framesubtitle{Verzeichnisstruktur}
+  \begin{columns}
+    \begin{column}{.6\textwidth}
+      \begin{itemize}
+      \item<+-> Mindestens eines der Verzeichnisse muss existieren
+      \item<+-> Die existierenden Verzeichnisse müssen eine Datei mit dem Namen
+        \texttt{main.yml} enthalten.
+      \end{itemize}
+    \end{column}
+    \begin{column}{.4\textwidth}
+      \tikzstyle{every node}=[draw=black,thick,anchor=west]
+      \tikzstyle{selected}=[draw=green,fill=green!30]
+      \begin{tikzpicture}[%
+        grow via three points={one child at (0.5,-0.7) and two children at
+          (0.5,-0.7) and (0.5,-1.4)}, edge from parent
+        path={(\tikzparentnode.south) |- (\tikzchildnode.west)}]
+        \node {/} child { node {roles} child { node [selected] {Rolle}
+            child { node {tasks}} child { node {handlers}} child { node {files}}
+            child { node {templates}} child { node {vars}} child { node
+              {defaults}} child { node {meta}} }} ;
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+\begin{frame}
+  \frametitle{Rollen}
+  \framesubtitle{Inhalt der Verzeichnisse}
+  \begin{description}
+  \item[tasks] enthalten die Liste an Tasks, die durch die Rolle ausgeführt wird
+  \item[handlers] Handler, die durch die Rolle benutzt werden
+  \item[files] Dateien, die von dieser Rolle benutzt werden
+  \item[templates] Templates, die dann deployt werden
+  \item[vars] Variablen für die Rolle
+  \item[defaults] Standardwerte für Variablen
+  \item[meta] Abhängigkeiten der Rolle
+  \end{description}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Übung 5}
+  In der vorigen Übung haben wir den Hostnamen gesetzt und einen NTP"=Server
+  installiert. Baut das nun um, dass diese Aufgaben als Rolle ausgeführt werden.
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Rollen}
+  \framesubtitle{Schleifen in Playbooks}
+  Für die Übung~5 reichte es, einen Ordner für die Tasks anzulegen. Nun wollen
+  wir auch mit Variablen arbeiten und Schleifen nutzen.
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Rollen}
+  \framesubtitle{Schleifen in Playbooks}
+  Über den Schlüssel \texttt{with\_items} können wir eine Liste von Werten
+  anlegen. Der Zugriff darauf erfolgt mittels \texttt{\{\{ item \}\}}.\pause{}
+
+  \begin{exampleblock}{Playbook mit Schleife}
+\begin{lstlisting}
+- name: Installiere Shell und git
+  package: "{{ item }}"
+  state: latest
+  with_items:
+  - fish
+  - git
+\end{lstlisting}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Rollen}
+  \framesubtitle{Werte in Variablen speichern}
+  Ansible erlaubt es, ausgegebene Werte in Variablen zu speichern und später
+  wieder darauf zurückzugreifen. Der Schlüssel \texttt{register} legt den Namen
+  der Variablen fest.
+  \begin{exampleblock}{Variable setzen}
+\begin{lstlisting}
+tasks:
+  - shell: /usr/bin/git branch
+    register: branch_name
+\end{lstlisting}
+  \end{exampleblock}
+
+    \begin{exampleblock}{auf Variable zugreifen}
+\begin{lstlisting}
+    foo: {{ branch_name.stdout }}
+\end{lstlisting}
+  \end{exampleblock}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Übung 6}
+  Jetzt gehen wir einen Schritt weiter und bauen uns eine
+  \enquote{Serverlandschaft} auf. Wir haben Server, die als Webserver und
+  solche, die als Datenbankserver fungieren.
+
+  Für den Webserver benötigen wir die folgenden Pakete und möchten
+  sicherstellen, der Apache nach erfolgreicher Installation auch gestartet ist:
+
+  \begin{exampleblock}{Webserver}
+    \begin{columns}
+      \begin{column}{.5\textwidth}
+        \begin{itemize}
+        \item apache2
+        \item apache2-utils
+        \item libapache2-mod-php
+        \end{itemize}
+      \end{column}
+      \begin{column}{.5\textwidth}
+        \begin{itemize}
+        \item php
+        \item php-dev
+        \item php-pgsql
+        \item php-pear
+        \item php-gettext
+        \end{itemize}
+      \end{column}
+    \end{columns}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Übung 6}
+  Als Datenbank nutzen wir PostgreSQL. Allerdings wollen wir dies gern von
+  \url{https://www.postgresql.org/download/linux/debian/} installieren. Welche
+  Schritte sind hierfür notwendig?
+  % Ich würde die folgenden Schritte gern mit den Leuten vor Ort durchsprechen
+  % und ungern das in eine Folie packen.
+  \begin{exampleblock}{PostgreSQL}
+    \begin{itemize}
+    \item postgresql
+    \item postgresql-client
+    \item postgresql-contrib
+    \item python-psycopg2
+    \item postgresql-client-common
+    \item postgresql-client
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}
+
+\subsection{Konfiguration}
+
+\begin{frame}[fragile]
+  \frametitle{Konfiguration}
+  Bisher installierten wir Dienste, starteten Dienste und sahen, wie neue Nutzer
+  eingerichtet werden können. Doch wie lässt sich mittels Ansible die
+  Konfiguration von Rechnern anpassen?\pause{}
+
+  Wir nutzen dafür das Modul \texttt{lineinfile}. Dieses stellt sicher, dass
+  eine bestimmte Zeile in einer Datei vorhanden bzw. nicht vorhanden ist.
+  \begin{exampleblock}{Bestimmten Nameserver entfernen}
+\begin{lstlisting}
+lineinfile:
+  dest: /etc/resolv.conf
+  regexp: '^nameserver'
+  line: 'nameserver 8.8.8.8'
+  state: absent
+\end{lstlisting}
+  \end{exampleblock}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Handler}
+  Bei Änderungen auf einem Remote"=System müssen manchmal Aktionen ausgeführt
+  werden. Ein klassisches Beispiel sind Änderungen an der Konfiguration. Diese
+  sind verbunden mit einem Reload oder Neustart des betreffenden Dienstes.
+
+  Diese Aktionen sollen nicht bei jedem Aufruf eines Playbooks passieren,
+  sondern nur bei Bedarf.\pause{}
+  Ansible hat hierfür das Konzept der Handler eingebaut.
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Handler}
+  Am Ende eines Plays werden die Aktionen unter \texttt{notify} aufgeführt und
+  die Liste an Aufgaben steht unter \texttt{handlers}:
+  \begin{exampleblock}{Apache neustarten}
+\begin{lstlisting}
+- name: Foo
+  ...
+  notify:
+    - restart apache
+...
+handlers:
+  - name: restart apache
+    service: name=apache state=restarted
+\end{lstlisting}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Lookups}
+  Mittels Lookups können wir innerhalb von Ansible auf andere Quellen
+  zugreifen. Das heißt, im Dateisystem lesen wie auch externe Dienste
+  kontaktieren.\pause{}
+
+  \begin{exampleblock}{}
+\begin{lstlisting}
+- hosts: all
+  vars:
+     contents: "{{ lookup('file', '/etc/debian_version') }}"
+  tasks:
+     - debug: msg="Die Debian-Version ist {{ contents }}"
+\end{lstlisting}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Lookups}
+  \framesubtitle{Passwort erzeugen}
+  Mittels \texttt{password} können wir ein Passwort erzeugen und dies in eine
+  Datei schreiben. Sollte die Datei bereits existieren, wird der Inhalt
+  ausgelesen. Standardmäßig erzeugt Ansible einen Mix aus Buchstaben, Zahlen und
+  Sonderzeichen mit 20~Zeichen.
+  \begin{exampleblock}{}
+\begin{lstlisting}
+password: "{{ lookup('password', 'PIN chars=digits length=4) }}"
+password: "{{ lookup('password', '/home/user/.geheim/passwort chars=ascii_letters,digits,hexdigits,punctuation') }}"
+\end{lstlisting}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Übung 7}
+  Wir stellen nun das installierte PHP sowie die Datenbank nach unseren Wünschen
+  ein:
+  \begin{itemize}
+  \item<+-> Wir aktivieren \texttt{short\_open\_tag}, deaktivieren
+    \texttt{allow\_url\_fopen}, setzen die \texttt{date.timezone} auf
+    Europe/Berlin und die \texttt{upload\_max\_filesize} auf \texttt{64M}.
+  \item<+-> In der \texttt{postgresql.conf} wird der Wert
+    \texttt{listen\_addresses} auf * gesetzt.
+  \item<+-> In der \texttt{pg\_hba.conf} wird die Zeile \texttt{host  test  test
+      0/0  md5} eingefügt.
+  \item<+-> Schließlich wird ein Nutzer \texttt{test} und eine Datenbank
+    \texttt{test} angelegt.
+  \end{itemize}
+\end{frame}
+
+\subsection{Dateien kopieren}
+
+
+\begin{frame}[fragile]
+  \frametitle{Dateien kopieren}
+  Jetzt haben wir eine kleine Anwendung entwickelt. Diese soll auf den Server
+  kopiert werden.\pause{}
+
+  Dazu kann das
+  \href{http://docs.ansible.com/ansible/latest/copy_module.html}{\texttt{copy}-Modul}
+  verwendet werden. Ähnlich wie bei \texttt{cp}, muss mindestens Quelle und Ziel
+  der Operation angegeben werden.
+  \begin{exampleblock}{\texttt{index.html} auf den Webserver kopieren}
+\begin{lstlisting}
+- name: Nameserver-Einstellungen kopieren
+  copy:
+   src: resolv.conf
+   dest: /etc
+\end{lstlisting}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Das debug-Modul}
+  Das
+  \href{http://docs.ansible.com/ansible/latest/debug_module.html}{\texttt{debug}-Modul}
+  gibt Informationen bei der Ausführung von Playbooks aus.  Wir nutzen dies, um
+  über die Variable \texttt{ansible\_host} die IP"=Adresse des Hosts anzuzeigen.
+  \begin{exampleblock}{}
+\begin{lstlisting}
+- debug:
+  msg: "Die IP ist: {{ ansible_host }}."
+\end{lstlisting}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Übung 8}
+  Kopiert die Dateien in \texttt{../uebungen/08-simpleapp} auf den Server und
+  lasst euch die IP"=Adresse ausgeben.
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Templates}
+  Neben dem Kopieren einfacher Dateien können wir auch Templates
+  anfertigen. Ansible baut daraus die korrekte Datei und lädt diese ins
+  Zielsystem. Die Basis für die Templates ist Jinja2.
+  \begin{exampleblock}{Aufruf mit Template-Modul}
+\begin{lstlisting}
+- name: Konfiguration
+  template: src=config.j2 dest=/etc/programm/tor.{{item.host}}.conf
+  with_items: {{ ipadressen }}
+\end{lstlisting}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Jinja2}
+  Die Template"=Sprache Jinja2 kommt aus dem Dunstkreis von Python und
+  funktioniert mit aktuellen Version (2.6.x, 2.7.x, ab 3.3.x) der Sprache.
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Jinja2}
+  \framesubtitle{Variablen}
+  Im Unterordner \texttt{vars} können Variablen in die Datei \texttt{main.yml}
+  eingebaut werden. Auf diese greift die Template"=Datei zu und fügt die Werte
+  ein.
+  \begin{exampleblock}{}
+\begin{lstlisting}
+ipadressen:
+  - host: Bridge1
+    ip: 192.168.192.23
+    port: 12345
+  - host: Bridge2
+    ip: 192.168.192.42
+    port: 4521
+\end{lstlisting}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Übung 9}
+  Nutzt den Wert \texttt{ansible\_host} aus dem Inventory und übergebt den Wert
+  in die \texttt{database.php}. Die so entstandene Datei soll mit dem
+  Template"=Modul auf den Server kopiert werden. Mittels \texttt{debug} solltet
+  ihr euch wieder zumindest die IP-Adresse des Rechners ausgeben lassen.
+\end{frame}
+\end{document}

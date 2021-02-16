@@ -1,0 +1,11 @@
+---
+
+- name: Install NTP package
+  package:
+    name: ntp
+    state: latest
+
+- name: Ensure ntp is running
+  service:
+    name: ntp
+    state: started

@@ -1,0 +1,28 @@
+---
+
+- name: gather instance facts
+  ec2_instance_facts:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    region: "{{ _region }}"
+    filters:
+      instance.group-name: "{{ infra_name }}"
+  register: ec2_running_instances
+
+#- debug: msg="{{ ec2_running_instances }}"
+
+- name: shutdown instances
+  ec2:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    region: "{{ _region }}"
+    instance_ids: "{{ item.instance_id }}"
+    state: absent
+  loop: "{{ ec2_running_instances.instances }}"
+  loop_control:
+    label: "{{ item.instance_id }}"
+  register: ec2_shutdown_instances
+
+- set_fact:
+    ec2_instances_running: True
+  when: ec2_shutdown_instances.changed

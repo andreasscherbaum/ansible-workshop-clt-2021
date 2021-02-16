@@ -1,0 +1,26 @@
+---
+
+- name: Set hostnames
+  hosts: all
+  become: true
+  tasks:
+
+    - name: Set hostname
+      hostname:
+        name: "{{ inventory_hostname }}"
+
+
+- name: Install NTP
+  hosts: all
+  become: true
+  tasks:
+
+    - name: Install NTP package
+      package:
+        name: ntp
+        state: latest
+
+    - name: Ensure ntp is running
+      service:
+        name: ntp
+        state: started

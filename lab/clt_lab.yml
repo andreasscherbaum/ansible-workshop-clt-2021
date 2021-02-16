@@ -1,0 +1,425 @@
+---
+
+- name: setup CLT lab environment
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+
+
+  tasks:
+
+  # the EC2 module does not play well with a proxy
+  - name: verify that proxy is not set
+    fail:
+      msg: "$http_proxy is set!"
+    when: lookup('env','http_proxy')|default('') != ""
+
+  - name: include configuration
+    include_vars:
+      file: configuration.yml
+
+  - name: include aws credentials
+    include_vars:
+      file: awscreds.yml
+
+
+  - name: gather AMI facts
+    ec2_ami_facts:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      owners: "{{ ami_owner }}"
+      region: "{{ _region }}"
+      filters:
+        name: "{{ ami_name }}-{{ ami_version }}"
+    register: ami_images
+    loop: "{{ regions }}"
+    loop_control:
+      loop_var: _region
+      label: "{{ _region }}"
+
+  - name: extract AMI information
+    set_fact:
+      ami: "{{ ami | default({}) | combine( { _ami.invocation.module_args.region: _ami.images.0.image_id } ) }}"
+    loop: "{{ ami_images.results }}"
+    loop_control:
+      loop_var: _ami
+      label: "{{ _ami.invocation.module_args.region }}"
+
+#  - debug: msg="{{ ami }}"
+
+  - name: create VPCs
+    ec2_vpc_net:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      cidr_block: "{{ vpc_cidr }}"
+      name: "{{ infra_name }}"
+      region: "{{ _region }}"
+    loop: "{{ regions }}"
+    loop_control:
+      loop_var: _region
+      label: "{{ _region }}"
+
+  - name: gather VPC facts
+    ec2_vpc_net_facts:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ _region }}"
+      filters:
+        "tag:Name": "{{ infra_name }}"
+    register: vpcs
+    loop: "{{ regions }}"
+    loop_control:
+      loop_var: _region
+      label: "{{ _region }}"
+
+  - block:
+    - name: extract VPC information
+      set_fact:
+        vpc_id: "{{ vpc_id | default({}) | combine( { _vpc._ansible_item_label: _vpc.vpcs.0.vpc_id } ) }}"
+      loop: "{{ vpcs.results }}"
+      loop_control:
+        loop_var: _vpc
+        label: "{{ _vpc._ansible_item_label|default('') }}"
+    when: ansible_version.full < "2.8.0"
+
+  - block:
+    - name: extract VPC information
+      set_fact:
+        vpc_id: "{{ vpc_id | default({}) | combine( { _vpc._region: _vpc.vpcs.0.vpc_id } ) }}"
+      loop: "{{ vpcs.results }}"
+      loop_control:
+        loop_var: _vpc
+        label: "{{ _vpc._region|default('') }}"
+    when: ansible_version.full >= "2.8.0"
+
+
+#  - debug: msg="{{ vpc_id }}"
+
+  - name: create Subnets
+    ec2_vpc_subnet:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      cidr: "{{ subnet_cidr }}"
+      vpc_id: "{{ vpc_id[_region] }}"
+      resource_tags:
+        Name: "{{ infra_name }}"
+      region: "{{ _region }}"
+    loop: "{{ regions }}"
+    loop_control:
+      loop_var: _region
+      label: "{{ _region }}"
+
+  - name: gather Subnet facts
+    ec2_vpc_subnet_facts:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ _region }}"
+      filters:
+        "tag:Name": "{{ infra_name }}"
+    register: subnets
+    loop: "{{ regions }}"
+    loop_control:
+      loop_var: _region
+      label: "{{ _region }}"
+
+  - block:
+    - name: extract Subnet information
+      set_fact:
+        subnet_id: "{{ subnet_id | default({}) | combine( { _subnet._ansible_item_label: _subnet.subnets.0.subnet_id } ) }}"
+      loop: "{{ subnets.results }}"
+      loop_control:
+        loop_var: _subnet
+        label: "{{ _subnet._ansible_item_label|default('') }}"
+    when: ansible_version.full < "2.8.0"
+
+  - block:
+    - name: extract Subnet information
+      set_fact:
+        subnet_id: "{{ subnet_id | default({}) | combine( { _subnet._region: _subnet.subnets.0.subnet_id } ) }}"
+      loop: "{{ subnets.results }}"
+      loop_control:
+        loop_var: _subnet
+        label: "{{ _subnet._region|default('') }}"
+    when: ansible_version.full >= "2.8.0"
+
+#  - debug: msg="{{ subnet_id }}"
+
+  - name: create Internet Gateways
+    ec2_vpc_igw:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      vpc_id: "{{ vpc_id[_region] }}"
+      resource_tags:
+        Name: "{{ infra_name }}"
+      region: "{{ _region }}"
+    loop: "{{ regions }}"
+    loop_control:
+      loop_var: _region
+      label: "{{ _region }}"
+
+  - name: gather Internet Gateway facts
+    ec2_vpc_igw_facts:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ _region }}"
+      filters:
+        "tag:Name": "{{ infra_name }}"
+    register: internet_gateways
+    loop: "{{ regions }}"
+    loop_control:
+      loop_var: _region
+      label: "{{ _region }}"
+
+  - block:
+    - name: extract Internet Gateway information
+      set_fact:
+        internet_gateway_id: "{{ internet_gateway_id | default({}) | combine( { _internet_gateway._ansible_item_label: _internet_gateway.internet_gateways.0.internet_gateway_id } ) }}"
+      loop: "{{ internet_gateways.results }}"
+      loop_control:
+        loop_var: _internet_gateway
+        label: "{{ _internet_gateway._ansible_item_label|default('') }}"
+    when: ansible_version.full < "2.8.0"
+
+  - block:
+    - name: extract Internet Gateway information
+      set_fact:
+        internet_gateway_id: "{{ internet_gateway_id | default({}) | combine( { _internet_gateway._region: _internet_gateway.internet_gateways.0.internet_gateway_id } ) }}"
+      loop: "{{ internet_gateways.results }}"
+      loop_control:
+        loop_var: _internet_gateway
+        label: "{{ _internet_gateway._region|default('') }}"
+    when: ansible_version.full >= "2.8.0"
+
+#  - debug: msg="{{ internet_gateway_id }}"
+
+  - name: create Route Table
+    ec2_vpc_route_table:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      vpc_id: "{{ vpc_id[_region] }}"
+      tags:
+        Name: "{{ infra_name }}"
+      region: "{{ _region }}"
+      subnets:
+        - "{{ subnet_id[_region] }}"
+      routes:
+        - dest: 0.0.0.0/0
+          gateway_id: "{{ internet_gateway_id[_region] }}"
+    loop: "{{ regions }}"
+    loop_control:
+      loop_var: _region
+      label: "{{ _region }}"
+
+  - name: include attendees
+    include_vars:
+      file: attendees.yml
+
+  - name: create local dirs
+    file:
+      path: "./{{ attendee_prefix }}{{ _attendee.id }}"
+      state: directory
+    loop: "{{ attendees }}"
+    loop_control:
+      loop_var: _attendee
+      label: "{{ _attendee.id }} - {{ _attendee.region }}"
+
+  - name: template ansible.cfg
+    template:
+      src: templates/ansible.cfg.j2
+      dest: "./{{ attendee_prefix }}{{ _attendee.id }}/ansible.cfg"
+    loop: "{{ attendees }}"
+    loop_control:
+      loop_var: _attendee
+      label: "{{ _attendee.id }} - {{ _attendee.region }}"
+
+  - name: create ec2 key pairs
+    ec2_key:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ _attendee.region }}"
+      name: "{{ attendee_prefix }}{{ _attendee.id }}"
+    loop: "{{ attendees }}"
+    loop_control:
+      loop_var: _attendee
+      label: "{{ _attendee.id }} - {{ _attendee.region }}"
+    register: ec2_keys
+
+  - name: save private keys
+    copy:
+      content: "{{ item.key.private_key }}" 
+      dest: "./{{ item.key.name }}/key.pem"
+      mode: 0600
+    when: item.changed
+    loop: "{{ ec2_keys.results }}"
+    loop_control:
+      label: "{{ item.key.name }}"
+
+  - name: save region
+    copy:
+      content: "{{ item.invocation.module_args.region }}" 
+      dest: "./{{ item.key.name }}/region.txt"
+      mode: 0600
+    when: item.changed
+    loop: "{{ ec2_keys.results }}"
+    loop_control:
+      label: "{{ item.key.name }}"
+
+  - name: create security group
+    ec2_group:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ _region }}"
+      name: "{{ infra_name }}"
+      description: "Security group for {{ infra_name }}"
+      vpc_id: "{{ vpc_id[_region] }}"
+      rules:
+        - proto: all
+          cidr_ip: 0.0.0.0/0
+    register: ec2_group
+    loop: "{{ regions }}"
+    loop_control:
+      loop_var: _region
+      label: "{{ _region }}"
+
+  #- debug: msg="{{ ec2_keys }}"
+
+  - name: create ec2 instances
+    ec2:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: "{{ item._attendee.region }}"
+      image: "{{ ami[item._attendee.region] }}"
+      instance_type: "{{ item._attendee.size }}"
+      assign_public_ip: yes
+      exact_count: 2
+      count_tag:
+        Name: "{{ item.key.name }}"
+      instance_tags:
+        Name: "{{ item.key.name }}"
+        Owner: "{{ item._attendee.name }}"
+      key_name: "{{ item.key.name }}"
+      user_data: "{{lookup('file', 'user_data.sh')}}"
+      vpc_subnet_id: "{{ subnet_id[item._attendee.region] }}"
+      group: [ "{{ infra_name }}" ]
+      wait: yes
+    loop: "{{ ec2_keys.results }}"
+    register: ec2_instances
+    loop_control:
+      label: "{{ item.key.name }}"
+
+  - block:
+    - name: template inventories
+      template:
+        src: templates/inventory.j2
+        dest: "./{{ item.tagged_instances[0].tags.Name }}/inventory"
+      loop: "{{ ec2_instances.results }}"
+      loop_control:
+        label: "{{ item._ansible_item_label|default('') }}"
+    when: ansible_version.full < "2.8.0"
+
+  - block:
+    - name: template inventories
+      template:
+        src: templates/inventory.j2
+        dest: "./{{ item.tagged_instances[0].tags.Name }}/inventory"
+      loop: "{{ ec2_instances.results }}"
+      loop_control:
+        label: "{{ item.item._attendee.name|default('') }} - {{ item.item._attendee.region|default('') }}"
+    when: ansible_version.full >= "2.8.0"
+
+  - block:
+    - name: create connect script for db server
+      template:
+        src: templates/connect-db.sh.j2
+        dest: "./{{ item.tagged_instances[0].tags.Name }}/connect-db.sh"
+        mode: 0700
+      loop: "{{ ec2_instances.results }}"
+      loop_control:
+        label: "{{ item._ansible_item_label|default('') }}"
+    when: ansible_version.full < "2.8.0"
+
+  - block:
+    - name: create connect script for db server
+      template:
+        src: templates/connect-db.sh.j2
+        dest: "./{{ item.tagged_instances[0].tags.Name }}/connect-db.sh"
+        mode: 0700
+      loop: "{{ ec2_instances.results }}"
+      loop_control:
+        label: "{{ item.item._attendee.name|default('') }} - {{ item.item._attendee.region|default('') }}"
+    when: ansible_version.full >= "2.8.0"
+
+  - block:
+    - name: create connect script for webserver
+      template:
+        src: templates/connect-web.sh.j2
+        dest: "./{{ item.tagged_instances[0].tags.Name }}/connect-web.sh"
+        mode: 0700
+      loop: "{{ ec2_instances.results }}"
+      loop_control:
+        label: "{{ item._ansible_item_label|default('') }}"
+    when: ansible_version.full < "2.8.0"
+
+  - block:
+    - name: create connect script for webserver
+      template:
+        src: templates/connect-web.sh.j2
+        dest: "./{{ item.tagged_instances[0].tags.Name }}/connect-web.sh"
+        mode: 0700
+      loop: "{{ ec2_instances.results }}"
+      loop_control:
+        label: "{{ item.item._attendee.name|default('') }} - {{ item.item._attendee.region|default('') }}"
+    when: ansible_version.full >= "2.8.0"
+
+  - block:
+    - name: send email
+      mail:
+        from: "Andreas Scherbaum <ads@wars-nicht.de>"
+        to: "{{ item.tagged_instances[0].tags.Owner }}"
+        charset: utf8
+        subject: "CLT 2021 Ansible Workshop - Zugangsdaten"
+        body: "{{lookup('file', 'templates/creds_mail.txt')}}"
+        attach: [ "{{ playbook_dir }}/{{ item.tagged_instances[0].tags.Name }}/inventory",  "{{ playbook_dir }}/{{ item.tagged_instances[0].tags.Name }}/key.pem", "{{ playbook_dir }}/{{ item.tagged_instances[0].tags.Name }}/ansible.cfg", "{{ playbook_dir }}/{{ item.tagged_instances[0].tags.Name }}/connect-db.sh", "{{ playbook_dir }}/{{ item.tagged_instances[0].tags.Name }}/connect-web.sh" ]
+      when: not lookup('first_found', dict(files = [ playbook_dir + '/' + item.tagged_instances[0].tags.Name + '/mailsent.txt' ], skip = true))
+      loop: "{{ ec2_instances.results }}"
+      loop_control:
+        label: "{{ item._ansible_item_label|default('') }}"
+
+    - name: mark email as sent
+      local_action:
+        module: copy
+        content: "Email was sent"
+        dest: "{{ playbook_dir }}/{{ item.tagged_instances[0].tags.Name }}/mailsent.txt"
+        mode: 0600
+      loop: "{{ ec2_instances.results }}"
+      loop_control:
+        label: "{{ item._ansible_item_label|default('') }}"
+
+    when: ansible_version.full < "2.8.0"
+
+  - block:
+    - name: send email
+      mail:
+        from: "Andreas Scherbaum <ads@wars-nicht.de>"
+        to: "{{ item.tagged_instances[0].tags.Owner }}"
+        charset: utf8
+        subject: "CLT 2021 Ansible Workshop - Zugangsdaten"
+        body: "{{lookup('file', 'templates/creds_mail.txt')}}"
+        attach: [ "{{ playbook_dir }}/{{ item.tagged_instances[0].tags.Name }}/inventory",  "{{ playbook_dir }}/{{ item.tagged_instances[0].tags.Name }}/key.pem", "{{ playbook_dir }}/{{ item.tagged_instances[0].tags.Name }}/ansible.cfg", "{{ playbook_dir }}/{{ item.tagged_instances[0].tags.Name }}/connect-db.sh", "{{ playbook_dir }}/{{ item.tagged_instances[0].tags.Name }}/connect-web.sh" ]
+      when: not lookup('first_found', dict(files = [ playbook_dir + '/' + item.tagged_instances[0].tags.Name + '/mailsent.txt' ], skip = true))
+      loop: "{{ ec2_instances.results }}"
+      loop_control:
+        label: "{{ item.item._attendee.name|default('') }} - {{ item.item._attendee.region|default('') }}"
+
+    - name: mark email as sent
+      local_action:
+        module: copy
+        content: "Email was sent"
+        dest: "{{ playbook_dir }}/{{ item.tagged_instances[0].tags.Name }}/mailsent.txt"
+        mode: 0600
+      loop: "{{ ec2_instances.results }}"
+      loop_control:
+        label: "{{ item.item._attendee.name|default('') }} - {{ item.item._attendee.region|default('') }}"
+
+    when: ansible_version.full >= "2.8.0"

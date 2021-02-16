@@ -1,0 +1,14 @@
+---
+
+- name: Installieren einer PHP-Anwendung
+  hosts: webservers
+  become: true
+  tasks:
+
+    - name: Copy application
+      copy:
+        src: "{{ playbook_dir }}/phpinfo.php"
+        dest: /var/www/html
+
+    - debug:
+        msg: "Die URL lautet: http://{{ ansible_host }}/phpinfo.php"

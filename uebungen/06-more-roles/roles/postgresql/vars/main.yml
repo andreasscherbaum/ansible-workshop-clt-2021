@@ -1,0 +1,5 @@
+---
+
+postgresql_repository_apt: "https://apt.postgresql.org/pub/repos/apt/"
+postgresql_repository_key: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
+postgresql_version: "9.6"

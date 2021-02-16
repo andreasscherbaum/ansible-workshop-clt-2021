@@ -1,0 +1,103 @@
+---
+
+- name: Regeln auf allen Webserver Maschinen durchsetzen
+  hosts: webservers
+  become: true
+  tasks:
+
+    # only works on Debian based systems
+    - name: PHP alternatives path
+      stat:
+        path: /etc/alternatives/php
+        follow: no
+        get_checksum: no
+        get_mime: no
+      register: php_version
+      changed_when: false
+
+
+    - name: PHP version number
+      set_fact:
+        php_version_number: "{{ php_version.stat.lnk_target | realpath | basename | regex_replace('php', '') }}"
+
+
+    - name: Configure php.ini
+      lineinfile:
+        # hardcoded version number
+        dest: "/etc/php/{{ php_version_number }}/apache2/php.ini"
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: "{{ item.state }}"
+      with_items:
+        - { regexp: '^short_open_tag', line: 'short_open_tag = On', state: present }
+        - { regexp: '^error_reporting', line: 'error_reporting = E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_USER_DEPRECATED & ~E_STRICT', state: present }
+        - { regexp: '^upload_max_filesize', line: 'upload_max_filesize = 64M', state: present }
+        - { regexp: '^allow_url_fopen', line: 'allow_url_fopen = Off', state: present }
+        - { regexp: '^;?date.timezone', line: 'date.timezone = "Europe/Berlin"', state: present }
+      notify:
+        - restart apache
+
+
+  handlers:
+
+    - name: restart apache
+      service: name=apache2 state=restarted
+
+
+- name: Regeln auf allen Datenbank Maschinen durchsetzen
+  hosts: dbservers
+  become: true
+  vars:
+    - postgresql_version: "9.6"
+  tasks:
+
+    - name: Configure postgresql.conf
+      lineinfile:
+        dest: "/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: "{{ item.state }}"
+      with_items:
+        - { regexp: '^listen_addresses', line: "listen_addresses = '*'", state: present }
+      notify:
+        - restart postgresql
+
+
+    - name: Configure pg_hba.conf
+      lineinfile:
+        dest: "/etc/postgresql/{{ postgresql_version }}/main/pg_hba.conf"
+        line: "{{ item.line }}"
+        state: "{{ item.state }}"
+      with_items:
+        - { line: "host  test  test  0/0  md5", state: present }
+      notify:
+        - restart postgresql
+
+
+    - name: user "test"
+      postgresql_user:
+        name: "test"
+        password: "{{ lookup('password', '../../db-account-test.txt chars=ascii_letters,digits length=12') }}"
+        role_attr_flags: NOCREATEDB,NOSUPERUSER,NOCREATEROLE,NOREPLICATION
+        state: present
+      become: yes
+      become_user: postgres
+
+
+    - name: database "test"
+      postgresql_db:
+        name: "test"
+        owner: "test"
+        encoding: UTF-8
+        lc_collate: en_US.UTF-8
+        lc_ctype: en_US.UTF-8
+        template: template0
+        state: present
+      become: yes
+      become_user: postgres
+
+
+  handlers:
+
+    - name: restart postgresql
+      service: name=postgresql state=restarted

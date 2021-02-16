@@ -1,0 +1,22 @@
+---
+
+- name: Install Apache2 + PHP packages
+  package:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - apache2
+    - apache2-utils
+    - libapache2-mod-php
+    - php
+    - php-dev
+    - php-pgsql
+    - php-pear
+    - php-gettext
+    - postgresql-client-common
+    - postgresql-client
+
+- name: Ensure Apache2 is running
+  service:
+    name: apache2
+    state: started

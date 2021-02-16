@@ -1,0 +1,24 @@
+
+Hallo,
+
+herzlich willkommen zum Workshop "Server mit Ansible verwalten" beim CLT 2021!
+
+Um zu Beginn des Workshops startklar zu sein und sofort loslegen zu können, bitten wir dich, folgende Dinge auf deinem Laptop vorzubereiten:
+
+  - Stelle bitte sicher, dass folgende Tools installiert sind:
+    - git (z.B. Ubuntu: sudo apt-get install git)
+      - Test: git --version
+    - ssh (z.B. Ubuntu: sudo apt-get install openssh-client)
+      - Test: ssh -V
+    - ansible in der Version 2.x (z.B. Ubuntu: sudo apt-get install ansible)
+      - Test: ansible --version
+  - Checke das git-Repository für den Workshop aus:
+    - git clone https://github.com/andreasscherbaum/ansible-workshop-clt-2021
+
+Unmittelbar vor dem Workshop senden wir dir eine zweite Email mit weiteren Hinweisen sowie Zugangsdaten, die du während des Workshops brauchen wirst.
+
+Der Workshop findet am Sonntag, dem 14.03.2021, um 11:00 Uhr im Raum W3 statt (siehe auch https://chemnitzer.linux-tage.de/2021/de/programm/beitrag/112).
+
+Für Rückfragen wendest Du dich bitte an clt20-ansible@kubieziel.de oder sprichst einen von uns auf dem CLT einfach an.
+
+Viel Spaß beim Workshop wünschen Dir Jens & Andreas & Andreas!

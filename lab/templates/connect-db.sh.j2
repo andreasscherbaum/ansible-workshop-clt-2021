@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -e
+
+chmod 0600 key.pem
+echo "Connecting to database server ({{ item.tagged_instances[0].public_ip }})..." 
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i key.pem ubuntu@{{ item.tagged_instances[0].public_ip }}

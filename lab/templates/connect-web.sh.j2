@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -e
+
+chmod 0600 key.pem
+echo "Connecting to webserver ({{ item.tagged_instances[1].public_ip }})..." 
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i key.pem ubuntu@{{ item.tagged_instances[1].public_ip }}
