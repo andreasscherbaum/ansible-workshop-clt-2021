@@ -10,10 +10,10 @@
 
   tasks:
 
-  - name: Check version
-    fail:
-      msg: "{{ ansible_version.full }}"
-    when: ansible_version.full > "2.9"
+#  - name: Check version
+#    fail:
+#      msg: "{{ ansible_version.full }}"
+#    when: ansible_version.full > "2.9"
 
 
   # the EC2 module does not play well with a proxy
