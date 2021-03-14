@@ -84,6 +84,9 @@ inventory = $ANSIBLE_CONFIG/inventory
 private_key_file = $ANSIBLE_CONFIG/key.pem
 remote_user = ubuntu
 host_key_checking = False
+interpreter_python = /usr/bin/python3
+ansible_python_interpreter = /usr/bin/python3
+
 ```
 
 Der `remote_user` muss an den Nutzer angepasst werden, der sich später in die virtuellen Maschinen einloggen wird. Die Datei in `private_key_file` wird verwendet, um sich mit dem darin enthaltenen privaten Schlüssel auf den VMs anzumelden. Ist der Zugang bereits über ssh-keyless Login gewährleistet, kann diese Zeile entfernt werden.
