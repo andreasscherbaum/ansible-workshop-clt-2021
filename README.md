@@ -63,6 +63,10 @@ Hinweis: wir als Vortragende wissen nicht, wie viele Plätze im Workshop noch fr
     ```console
     export ANSIBLE_CONFIG=$(pwd)
     ```
+	oder
+	```console
+	export ANSIBLE_CONFIG=/pfad/zum/verzeichnis
+	```
 
     
 ## Nach den Chemnitzer Linux-Tagen 2021
