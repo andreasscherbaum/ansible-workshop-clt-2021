@@ -34,8 +34,8 @@ Hinweis: wir als Vortragende wissen nicht, wie viele Plätze im Workshop noch fr
 
 ## Voraussetzungen
 
-* Laptop mit gängiger, aktueller Linux-Distribution (z.B. Ubuntu >= 18.04, Debian >= stretch)
-* Installiertes Ansible >= 2.7
+* Laptop mit gängiger, aktueller Linux-Distribution (z.B. Ubuntu >= 20.04, Debian >= stable)
+* Installiertes Ansible >= 2.9
 * Git
 * SSH client
 
